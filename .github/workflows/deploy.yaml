@@ -1,0 +1,139 @@
+name: Terraform Deploy
+
+on:
+  workflow_call:
+    inputs:
+      path:
+        description: "Path to the Terraform code"
+        required: true
+        type: string
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      AWS_SESSION_TOKEN:
+        required: false
+      AWS_REGION:
+        required: true
+      DB_USERNAME:
+        required: true
+      DB_PASSWORD:
+        required: true
+      SMTP_USER:
+        required: true
+      SMTP_PASSWORD:
+        required: true
+      MAIL_FROM:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  terraform-deploy:
+    name: Plan y Apply
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Generar variables desde GitHub Secrets
+        working-directory: ${{ inputs.path }}
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          MAIL_FROM: ${{ secrets.MAIL_FROM }}
+        run: |
+          set -euo pipefail
+          # jq --arg escapa correctamente cada valor: evita que un caracter especial
+          # en un secreto rompa el JSON o se interprete como shell (a diferencia de
+          # interpolar ${{ secrets.X }} directo dentro de un heredoc).
+          jq -n \
+            --arg aws_region "$AWS_REGION" \
+            --arg db_username "$DB_USERNAME" \
+            --arg db_password "$DB_PASSWORD" \
+            --arg smtp_user "$SMTP_USER" \
+            --arg smtp_password "$SMTP_PASSWORD" \
+            --arg mail_from "$MAIL_FROM" \
+            '{
+              project_name: "proveocomercio",
+              aws_region: $aws_region,
+              nat_gateway_per_az: true,
+              subnets_config: {
+                public_a:  { az: "us-east-1a", net_num: 1,  public: true },
+                public_b:  { az: "us-east-1b", net_num: 2,  public: true },
+                private_a: { az: "us-east-1a", net_num: 10, public: false },
+                private_b: { az: "us-east-1b", net_num: 11, public: false }
+              },
+              alb_config: {
+                name: "proveo-app-alb",
+                internal: false,
+                listener_port: 80,
+                protocol: "HTTP",
+                frontend_port: 80,
+                backend_port: 3000,
+                backend_path_pattern: "/api/*",
+                target_protocol: "HTTP"
+              },
+              db_config: {
+                engine: "mysql",
+                engine_version: "8.0",
+                instance_class: "db.t4g.micro",
+                username: $db_username,
+                password: $db_password,
+                storage: 20,
+                name: "proveocomercio",
+                publicly_accessible: false,
+                multi_az: true,
+                storage_encrypted: true,
+                backup_retention_period: 7,
+                deletion_protection: false
+              },
+              smtp_config: {
+                host: "smtp-relay.brevo.com",
+                port: 587,
+                user: $smtp_user,
+                password: $smtp_password,
+                secure: false,
+                mail_from: $mail_from
+              },
+              frontend_desired_count: 2,
+              backend_desired_count: 2,
+              worker_desired_count: 2,
+              worker_min_capacity: 2,
+              worker_max_capacity: 4,
+              create_iam_roles: false,
+              task_execution_role_name: "LabRole",
+              task_role_name: "LabRole",
+              enable_ecs_autoscaling: false
+            }' > terraform.auto.tfvars.json
+
+      - name: Terraform Init
+        working-directory: ${{ inputs.path }}
+        run: terraform init -input=false
+
+      - name: Terraform Plan
+        working-directory: ${{ inputs.path }}
+        run: terraform plan -input=false -out=tfplan
+
+      - name: Terraform Apply
+        working-directory: ${{ inputs.path }}
+        run: terraform apply -input=false -auto-approve tfplan

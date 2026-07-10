@@ -1,0 +1,32 @@
+name: Terraform Validate
+
+on:
+  workflow_call:
+    inputs:
+      path:
+        description: "Path to the Terraform code"
+        required: true
+        type: string
+
+jobs:
+  terraform:
+    name: Terraform Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        working-directory: ${{ inputs.path }}
+        run: terraform init -backend=false
+
+      - name: Run Terraform FMT
+        run: terraform fmt -check -recursive ${{ inputs.path }}
+
+      - name: Run Terraform Validate
+        working-directory: ${{ inputs.path }}
+        run: terraform validate

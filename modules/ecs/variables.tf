@@ -14,6 +14,11 @@ variable "backend_upstream" {
   type = string
 }
 
+variable "frontend_url" {
+  type        = string
+  description = "Public URL of the frontend, used by the backend to restrict CORS"
+}
+
 variable "backend_resolver" {
   type = string
 }

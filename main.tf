@@ -1,9 +1,10 @@
 module "network" {
-  source         = "./modules/network"
-  enable_network = var.enable_network
-  vpc_cidr       = var.vpc_cidr
-  project_name   = var.project_name
-  subnets_config = var.subnets_config
+  source             = "./modules/network"
+  enable_network     = var.enable_network
+  vpc_cidr           = var.vpc_cidr
+  project_name       = var.project_name
+  subnets_config     = var.subnets_config
+  nat_gateway_per_az = var.nat_gateway_per_az
 }
 
 module "security" {
@@ -84,6 +85,7 @@ module "ecs" {
   cluster_name                   = "${var.project_name}-cluster"
   backend_upstream               = "${module.alb.backend_internal_dns_name}:80"
   backend_resolver               = cidrhost(var.vpc_cidr, 2)
+  frontend_url                   = "http://${module.alb.alb_dns_name}"
   create_iam_roles               = var.create_iam_roles
   task_execution_role_name       = var.task_execution_role_name
   task_execution_role_arn        = var.task_execution_role_arn

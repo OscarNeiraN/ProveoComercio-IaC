@@ -17,6 +17,12 @@ variable "vpc_cidr" {
   default = "10.0.0.0/16"
 }
 
+variable "nat_gateway_per_az" {
+  type        = bool
+  default     = true
+  description = "true = un NAT Gateway por AZ (alta disponibilidad, mayor costo). false = un unico NAT Gateway compartido."
+}
+
 variable "subnets_config" {
   type = map(object({
     az      = string

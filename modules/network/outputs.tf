@@ -18,5 +18,5 @@ output "private_subnet_ids" {
 }
 
 output "nat_public_ip" {
-  value = one(aws_eip.nat[*].public_ip)
+  value = [for eip in aws_eip.nat : eip.public_ip]
 }

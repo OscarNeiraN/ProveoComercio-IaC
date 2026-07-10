@@ -1,0 +1,37 @@
+name: Terraform CI - Pipeline Central
+
+on:
+  push:
+    branches:
+      - main
+      - release/pipeline
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+
+  analisis:
+    name: Llamar analisis estatico y seguridad
+    uses: ./.github/workflows/tflint-checkov.yaml
+    with:
+      path: .
+
+  validacion:
+    name: Llamar validacion Terraform
+    needs: analisis
+    uses: ./.github/workflows/validate.yaml
+    with:
+      path: .
+
+  despliegue:
+    name: Llamar despliegue de infraestructura
+    needs: validacion
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/deploy.yaml
+    with:
+      path: .
+    secrets: inherit

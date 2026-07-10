@@ -49,7 +49,7 @@ Terraform crea secretos de runtime en AWS Secrets Manager y ECS los consume desd
 
 Si `jwt_secret` queda vacio, Terraform genera un valor aleatorio y lo guarda en Secrets Manager. Las credenciales de AWS para ejecutar GitHub Actions no se crean desde Terraform: agregalas manualmente en GitHub Secrets para no dejarlas dentro del state de Terraform.
 
-Despues de `terraform apply`, usa este output para copiar los valores no sensibles que necesita el workflow CD:
+Despues de `terraform apply`, usa este output para ver los valores no sensibles que usa el workflow CD:
 
 ```powershell
 terraform output github_actions_secret_values
@@ -61,9 +61,44 @@ Los secretos manuales que debes crear en GitHub son:
 AWS_ACCESS_KEY_ID
 AWS_SECRET_ACCESS_KEY
 AWS_SESSION_TOKEN
+AWS_REGION
 ```
 
 Si usas un rol ECS existente como `LabRole`, ese rol debe poder leer secretos con `secretsmanager:GetSecretValue`.
+
+## Pipeline CI/CD de Terraform
+
+`Terraform CI - Pipeline Central` (`.github/workflows/terraform-ci.yml`) corre en cada push y pull request:
+
+1. **Analisis** (`tflint-checkov.yaml`): TFLint con el plugin de AWS, despues Checkov.
+2. **Validacion** (`validate.yaml`): `terraform fmt`, `terraform init -backend=false`, `terraform validate`.
+3. **Despliegue** (`deploy.yaml`): solo en push directo a `main`. Genera las variables desde GitHub Secrets, y corre `terraform plan` + `terraform apply -auto-approve`. No corre en pull requests ni en `release/pipeline`, ahi solo se analiza y valida.
+
+### Bootstrap: bucket S3 para el remote state
+
+El pipeline necesita que el state ya viva en S3 (asi el `terraform plan` de cada corrida ve el estado real de la infraestructura, no arranca de cero). Ese bucket se crea **una sola vez, a mano**, antes del primer push:
+
+```powershell
+cd Terraform/bootstrap
+terraform init
+terraform apply
+```
+
+El nombre del bucket queda fijo en `Terraform/bootstrap/variables.tf` (`state_bucket_name`) y tiene que coincidir con el que usa `Terraform/providers.tf` (`backend "s3" { bucket = "..." }`). Si cambias uno, cambia el otro.
+
+### GitHub Secrets para el despliegue automatico
+
+Ademas de `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` y `AWS_REGION` (mismos que usa el CD de `App/`), el job de despliegue necesita:
+
+```text
+DB_USERNAME
+DB_PASSWORD
+SMTP_USER
+SMTP_PASSWORD
+MAIL_FROM
+```
+
+`AWS_SESSION_TOKEN` es un token de sesion de AWS Academy Learner Lab: vence cada pocas horas. Si el pipeline falla en el paso de `Configure AWS credentials` o en `terraform plan` con un error de autenticacion, hay que refrescar ese secret con las credenciales vigentes del lab antes de reintentar.
 
 ## Solo Infraestructura
 

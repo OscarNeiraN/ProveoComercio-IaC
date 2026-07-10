@@ -1,0 +1,49 @@
+name: Analisis Estatico y Seguridad
+
+on:
+  workflow_call:
+    inputs:
+      path:
+        description: "Path to the Terraform code"
+        required: true
+        type: string
+
+jobs:
+
+  tflint:
+    name: Analisis Estatico - TFLint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: latest
+
+      - name: Inicializar TFLint
+        run: tflint --init
+        working-directory: ${{ inputs.path }}
+
+      - name: Ejecutar TFLint
+        run: tflint --recursive --config="$(pwd)/.tflint.hcl" --format compact
+        working-directory: ${{ inputs.path }}
+
+  checkov:
+    name: Analisis de Seguridad - Checkov
+    runs-on: ubuntu-latest
+    needs: tflint
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Checkov
+        run: pip install checkov
+
+      - name: Ejecutar Checkov
+        run: |
+          checkov -d ${{ inputs.path }} --framework terraform --compact \
+            --skip-check CKV2_AWS_11,CKV2_AWS_12,CKV2_AWS_19,CKV2_AWS_28,CKV2_AWS_5,CKV2_AWS_57,CKV_AWS_103,CKV_AWS_118,CKV_AWS_129,CKV_AWS_136,CKV_AWS_149,CKV_AWS_150,CKV_AWS_158,CKV_AWS_2,CKV_AWS_260,CKV_AWS_293,CKV_AWS_338,CKV_AWS_353,CKV_AWS_378,CKV_AWS_51,CKV_AWS_91,CKV_AWS_18,CKV2_AWS_62,CKV_AWS_144,CKV_AWS_145

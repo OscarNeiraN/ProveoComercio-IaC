@@ -99,6 +99,11 @@ resource "aws_cloudwatch_log_group" "ecs" {
 
 resource "aws_ecs_cluster" "main" {
   name = var.cluster_name
+
+  setting {
+    name  = "containerInsights"
+    value = "enabled"
+  }
 }
 
 resource "aws_ecs_task_definition" "frontend" {
@@ -231,6 +236,10 @@ resource "aws_ecs_task_definition" "backend" {
         {
           name  = "DB_PORT"
           value = tostring(var.db_port)
+        },
+        {
+          name  = "FRONTEND_URL"
+          value = var.frontend_url
         }
       ]
       secrets = [

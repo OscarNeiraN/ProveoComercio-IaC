@@ -6,6 +6,7 @@ resource "aws_lb" "app" {
   security_groups            = var.security_group_ids
   subnets                    = var.subnet_ids
   enable_deletion_protection = false
+  drop_invalid_header_fields = true
 
   lifecycle {
     create_before_destroy = true
@@ -39,6 +40,7 @@ resource "aws_lb" "backend" {
   security_groups            = var.backend_security_group_ids
   subnets                    = var.backend_subnet_ids
   enable_deletion_protection = false
+  drop_invalid_header_fields = true
 
   lifecycle {
     create_before_destroy = true

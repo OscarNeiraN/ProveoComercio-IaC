@@ -14,6 +14,11 @@ resource "aws_cloudwatch_log_group" "migration" {
 
 resource "aws_ecs_cluster" "migration" {
   name = var.cluster_name
+
+  setting {
+    name  = "containerInsights"
+    value = "enabled"
+  }
 }
 
 resource "aws_ecs_task_definition" "db_migrator" {

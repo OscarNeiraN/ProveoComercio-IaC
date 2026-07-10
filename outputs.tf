@@ -12,7 +12,7 @@ output "private_subnet_ids" {
 
 output "nat_public_ip" {
   value       = module.network.nat_public_ip
-  description = "IP publica de salida para tareas privadas via NAT Gateway"
+  description = "IPs publicas de salida para tareas privadas via NAT Gateway(s)"
 }
 
 output "migration_sg_id" {
@@ -150,7 +150,7 @@ output "app_runtime_secret_arns" {
 }
 
 output "github_actions_secret_values" {
-  description = "Valores no sensibles que Terraform entrega para configurar GitHub Secrets del pipeline CD de App"
+  description = "Valores no sensibles de referencia para configurar el pipeline CD de App"
   value = {
     AWS_REGION              = var.aws_region
     BACKEND_ECR_REPOSITORY  = module.ecr.backend_repo_name
@@ -167,6 +167,7 @@ output "github_actions_manual_secret_names" {
   value = [
     "AWS_ACCESS_KEY_ID",
     "AWS_SECRET_ACCESS_KEY",
-    "AWS_SESSION_TOKEN"
+    "AWS_SESSION_TOKEN",
+    "AWS_REGION"
   ]
 }
