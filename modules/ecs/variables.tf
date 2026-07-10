@@ -130,8 +130,28 @@ variable "frontend_target_group_arn" {
   type = string
 }
 
+variable "frontend_target_group_arn_suffix" {
+  type        = string
+  description = "Usado para la alarma de CloudWatch de 5xx del frontend"
+}
+
+variable "frontend_alb_arn_suffix" {
+  type        = string
+  description = "Usado para la alarma de CloudWatch de 5xx del frontend"
+}
+
 variable "backend_target_group_arn" {
   type = string
+}
+
+variable "backend_target_group_arn_suffix" {
+  type        = string
+  description = "Usado para la alarma de CloudWatch de 5xx del backend"
+}
+
+variable "backend_alb_arn_suffix" {
+  type        = string
+  description = "Usado para la alarma de CloudWatch de 5xx del backend"
 }
 
 variable "db_host" {

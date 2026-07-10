@@ -367,6 +367,24 @@ resource "aws_ecs_task_definition" "worker" {
   ])
 }
 
+resource "aws_cloudwatch_metric_alarm" "frontend_5xx" {
+  alarm_name          = "${var.project_name}-frontend-5xx"
+  alarm_description   = "5xx del frontend durante un deploy: si se dispara, ECS revierte el servicio solo"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+  metric_name         = "HTTPCode_Target_5XX_Count"
+  namespace           = "AWS/ApplicationELB"
+  period              = 60
+  statistic           = "Sum"
+  threshold           = 5
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    LoadBalancer = var.frontend_alb_arn_suffix
+    TargetGroup  = var.frontend_target_group_arn_suffix
+  }
+}
+
 resource "aws_ecs_service" "frontend" {
   name                              = "${var.project_name}-frontend-service"
   cluster                           = aws_ecs_cluster.main.id
@@ -379,6 +397,15 @@ resource "aws_ecs_service" "frontend" {
   deployment_circuit_breaker {
     enable   = true
     rollback = true
+  }
+
+  # Ademas del health check del contenedor, mira la tasa de 5xx real del ALB durante
+  # el deploy. Si el contenedor arranca "sano" pero la app tira errores con trafico
+  # real, esto tambien dispara el rollback automatico (el circuit breaker solo no lo detecta).
+  alarms {
+    enable      = true
+    rollback    = true
+    alarm_names = [aws_cloudwatch_metric_alarm.frontend_5xx.alarm_name]
   }
 
   network_configuration {
@@ -423,6 +450,24 @@ resource "aws_appautoscaling_policy" "frontend_cpu" {
   }
 }
 
+resource "aws_cloudwatch_metric_alarm" "backend_5xx" {
+  alarm_name          = "${var.project_name}-backend-5xx"
+  alarm_description   = "5xx del backend durante un deploy: si se dispara, ECS revierte el servicio solo"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+  metric_name         = "HTTPCode_Target_5XX_Count"
+  namespace           = "AWS/ApplicationELB"
+  period              = 60
+  statistic           = "Sum"
+  threshold           = 5
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    LoadBalancer = var.backend_alb_arn_suffix
+    TargetGroup  = var.backend_target_group_arn_suffix
+  }
+}
+
 resource "aws_ecs_service" "backend" {
   name                              = "${var.project_name}-backend-service"
   cluster                           = aws_ecs_cluster.main.id
@@ -435,6 +480,12 @@ resource "aws_ecs_service" "backend" {
   deployment_circuit_breaker {
     enable   = true
     rollback = true
+  }
+
+  alarms {
+    enable      = true
+    rollback    = true
+    alarm_names = [aws_cloudwatch_metric_alarm.backend_5xx.alarm_name]
   }
 
   network_configuration {
