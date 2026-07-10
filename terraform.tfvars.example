@@ -1,0 +1,57 @@
+project_name = "proveocomercio"
+aws_region   = "us-east-1"
+
+subnets_config = {
+  public_a = {
+    az      = "us-east-1a"
+    net_num = 1
+    public  = true
+  }
+  public_b = {
+    az      = "us-east-1b"
+    net_num = 2
+    public  = true
+  }
+  private_a = {
+    az      = "us-east-1a"
+    net_num = 10
+    public  = false
+  }
+  private_b = {
+    az      = "us-east-1b"
+    net_num = 11
+    public  = false
+  }
+}
+
+alb_config = {
+  name                 = "proveo-app-alb"
+  internal             = false
+  listener_port        = 80
+  protocol             = "HTTP"
+  frontend_port        = 80
+  backend_port         = 3000
+  backend_path_pattern = "/api/*"
+  target_protocol      = "HTTP"
+}
+
+db_config = {
+  engine                  = "mysql"
+  engine_version          = "8.0"
+  instance_class          = "db.t4g.micro"
+  username                = "proveo_admin"
+  password                = "CHANGE_ME_FROM_SECRET_OR_LOCAL_TFVARS"
+  storage                 = 20
+  name                    = "proveocomercio"
+  publicly_accessible     = false
+  multi_az                = false
+  storage_encrypted       = true
+  backup_retention_period = 7
+  deletion_protection     = false
+}
+
+# AWS Academy / Learner Lab:
+# create_iam_roles         = false
+# task_execution_role_name = "LabRole"
+# task_role_name           = "LabRole"
+# enable_ecs_autoscaling   = false
