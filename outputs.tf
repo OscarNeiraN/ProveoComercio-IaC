@@ -87,9 +87,19 @@ output "frontend_ecr_repository_url" {
   description = "Repositorio ECR para la imagen del frontend"
 }
 
+output "frontend_ecr_repository_name" {
+  value       = module.ecr.frontend_repo_name
+  description = "Nombre del repositorio ECR del frontend para GitHub Actions"
+}
+
 output "backend_ecr_repository_url" {
   value       = module.ecr.backend_repo_url
   description = "Repositorio ECR para la imagen del backend"
+}
+
+output "backend_ecr_repository_name" {
+  value       = module.ecr.backend_repo_name
+  description = "Nombre del repositorio ECR del backend para GitHub Actions"
 }
 
 output "db_migrator_ecr_repository_url" {
@@ -126,4 +136,37 @@ output "worker_service_name" {
 output "backend_internal_dns_name" {
   value       = module.ecs.backend_internal_dns_name
   description = "Upstream privado usado por el frontend para llegar al backend"
+}
+
+output "app_runtime_secret_arns" {
+  description = "Secretos creados en AWS Secrets Manager y consumidos por ECS"
+  value = {
+    db_user       = aws_secretsmanager_secret.app["db_user"].arn
+    db_password   = aws_secretsmanager_secret.app["db_password"].arn
+    jwt_secret    = aws_secretsmanager_secret.app["jwt_secret"].arn
+    smtp_user     = aws_secretsmanager_secret.app["smtp_user"].arn
+    smtp_password = aws_secretsmanager_secret.app["smtp_password"].arn
+  }
+}
+
+output "github_actions_secret_values" {
+  description = "Valores no sensibles que Terraform entrega para configurar GitHub Secrets del pipeline CD de App"
+  value = {
+    AWS_REGION              = var.aws_region
+    BACKEND_ECR_REPOSITORY  = module.ecr.backend_repo_name
+    FRONTEND_ECR_REPOSITORY = module.ecr.frontend_repo_name
+    ECS_CLUSTER             = module.ecs.cluster_name
+    ECS_FRONTEND_SERVICE    = module.ecs.frontend_service_name
+    ECS_BACKEND_SERVICE     = module.ecs.backend_service_name
+    ECS_WORKER_SERVICE      = module.ecs.worker_service_name
+  }
+}
+
+output "github_actions_manual_secret_names" {
+  description = "Credenciales que debes crear manualmente en GitHub Secrets; Terraform no debe guardarlas en el state"
+  value = [
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY",
+    "AWS_SESSION_TOKEN"
+  ]
 }

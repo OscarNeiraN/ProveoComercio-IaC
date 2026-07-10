@@ -73,8 +73,8 @@ module "migration" {
   db_host                  = var.create_db ? module.database.db_endpoint : var.external_db_host
   db_port                  = var.create_db ? module.database.db_port : var.external_db_port
   db_name                  = var.db_config.name
-  db_user                  = var.db_config.username
-  db_password              = var.db_config.password
+  db_user_secret_arn       = aws_secretsmanager_secret.app["db_user"].arn
+  db_password_secret_arn   = aws_secretsmanager_secret.app["db_password"].arn
 }
 
 module "ecs" {
@@ -107,12 +107,13 @@ module "ecs" {
   db_host                        = var.create_db ? module.database.db_endpoint : var.external_db_host
   db_port                        = var.create_db ? module.database.db_port : var.external_db_port
   db_name                        = var.db_config.name
-  db_user                        = var.db_config.username
-  db_password                    = var.db_config.password
+  db_user_secret_arn             = aws_secretsmanager_secret.app["db_user"].arn
+  db_password_secret_arn         = aws_secretsmanager_secret.app["db_password"].arn
+  jwt_secret_arn                 = aws_secretsmanager_secret.app["jwt_secret"].arn
   smtp_host                      = var.smtp_config.host
   smtp_port                      = var.smtp_config.port
-  smtp_user                      = var.smtp_config.user
-  smtp_password                  = var.smtp_config.password
+  smtp_user_secret_arn           = aws_secretsmanager_secret.app["smtp_user"].arn
+  smtp_password_secret_arn       = aws_secretsmanager_secret.app["smtp_password"].arn
   smtp_secure                    = var.smtp_config.secure
   mail_from                      = var.smtp_config.mail_from
   sqs_queue_url                  = module.sqs.queue_url

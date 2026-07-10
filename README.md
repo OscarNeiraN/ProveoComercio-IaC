@@ -37,6 +37,34 @@ El flujo es:
 5. Entrega continua a ECR.
 6. Despliegue continuo en servicios ECS.
 
+## Secretos
+
+Terraform crea secretos de runtime en AWS Secrets Manager y ECS los consume desde la task definition:
+
+- `DB_USER`
+- `DB_PASSWORD`
+- `JWT_SECRET`
+- `SMTP_USER`
+- `SMTP_PASSWORD`
+
+Si `jwt_secret` queda vacio, Terraform genera un valor aleatorio y lo guarda en Secrets Manager. Las credenciales de AWS para ejecutar GitHub Actions no se crean desde Terraform: agregalas manualmente en GitHub Secrets para no dejarlas dentro del state de Terraform.
+
+Despues de `terraform apply`, usa este output para copiar los valores no sensibles que necesita el workflow CD:
+
+```powershell
+terraform output github_actions_secret_values
+```
+
+Los secretos manuales que debes crear en GitHub son:
+
+```text
+AWS_ACCESS_KEY_ID
+AWS_SECRET_ACCESS_KEY
+AWS_SESSION_TOKEN
+```
+
+Si usas un rol ECS existente como `LabRole`, ese rol debe poder leer secretos con `secretsmanager:GetSecretValue`.
+
 ## Solo Infraestructura
 
 Desde `Terraform/`:

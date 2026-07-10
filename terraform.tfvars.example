@@ -1,6 +1,9 @@
 project_name = "proveocomercio"
 aws_region   = "us-east-1"
 
+# Opcional. Si queda vacio, Terraform genera JWT_SECRET y lo guarda en AWS Secrets Manager.
+# jwt_secret = "CHANGE_ME_LONG_RANDOM_VALUE"
+
 subnets_config = {
   public_a = {
     az      = "us-east-1a"
@@ -48,6 +51,15 @@ db_config = {
   storage_encrypted       = true
   backup_retention_period = 7
   deletion_protection     = false
+}
+
+smtp_config = {
+  host      = ""
+  port      = 587
+  user      = ""
+  password  = ""
+  secure    = false
+  mail_from = ""
 }
 
 # AWS Academy / Learner Lab:

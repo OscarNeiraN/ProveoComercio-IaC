@@ -42,14 +42,16 @@ resource "aws_ecs_task_definition" "db_migrator" {
         {
           name  = "DB_NAME"
           value = var.db_name
+        }
+      ]
+      secrets = [
+        {
+          name      = "DB_USER"
+          valueFrom = var.db_user_secret_arn
         },
         {
-          name  = "DB_USER"
-          value = var.db_user
-        },
-        {
-          name  = "DB_PASSWORD"
-          value = var.db_password
+          name      = "DB_PASSWORD"
+          valueFrom = var.db_password_secret_arn
         }
       ]
       logConfiguration = {

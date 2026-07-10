@@ -40,6 +40,13 @@ variable "db_migrator_image" {
   default = ""
 }
 
+variable "jwt_secret" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "JWT signing secret for the backend. Leave empty to let Terraform generate one and store it in AWS Secrets Manager."
+}
+
 variable "frontend_port" {
   type    = number
   default = 80

@@ -44,13 +44,12 @@ variable "db_name" {
   type = string
 }
 
-variable "db_user" {
+variable "db_user_secret_arn" {
   type = string
 }
 
-variable "db_password" {
-  type      = string
-  sensitive = true
+variable "db_password_secret_arn" {
+  type = string
 }
 
 variable "cpu" {

@@ -67,6 +67,31 @@ resource "aws_iam_role_policy" "ecs_task_sqs" {
   policy = data.aws_iam_policy_document.ecs_task_sqs.json
 }
 
+data "aws_iam_policy_document" "ecs_execution_secrets" {
+  statement {
+    effect = "Allow"
+
+    actions = [
+      "secretsmanager:GetSecretValue"
+    ]
+
+    resources = [
+      var.db_user_secret_arn,
+      var.db_password_secret_arn,
+      var.jwt_secret_arn,
+      var.smtp_user_secret_arn,
+      var.smtp_password_secret_arn
+    ]
+  }
+}
+
+resource "aws_iam_role_policy" "ecs_execution_secrets" {
+  count  = var.create_iam_roles ? 1 : 0
+  name   = "${var.project_name}-ecs-execution-secrets"
+  role   = aws_iam_role.ecs_task_execution[0].id
+  policy = data.aws_iam_policy_document.ecs_execution_secrets.json
+}
+
 resource "aws_cloudwatch_log_group" "ecs" {
   name              = "/ecs/${var.project_name}"
   retention_in_days = 7
@@ -184,28 +209,12 @@ resource "aws_ecs_task_definition" "backend" {
           value = var.db_name
         },
         {
-          name  = "DB_USER"
-          value = var.db_user
-        },
-        {
-          name  = "DB_PASSWORD"
-          value = var.db_password
-        },
-        {
           name  = "SMTP_HOST"
           value = var.smtp_host
         },
         {
           name  = "SMTP_PORT"
           value = tostring(var.smtp_port)
-        },
-        {
-          name  = "SMTP_USER"
-          value = var.smtp_user
-        },
-        {
-          name  = "SMTP_PASSWORD"
-          value = var.smtp_password
         },
         {
           name  = "SMTP_SECURE"
@@ -222,6 +231,28 @@ resource "aws_ecs_task_definition" "backend" {
         {
           name  = "DB_PORT"
           value = tostring(var.db_port)
+        }
+      ]
+      secrets = [
+        {
+          name      = "DB_USER"
+          valueFrom = var.db_user_secret_arn
+        },
+        {
+          name      = "DB_PASSWORD"
+          valueFrom = var.db_password_secret_arn
+        },
+        {
+          name      = "JWT_SECRET"
+          valueFrom = var.jwt_secret_arn
+        },
+        {
+          name      = "SMTP_USER"
+          valueFrom = var.smtp_user_secret_arn
+        },
+        {
+          name      = "SMTP_PASSWORD"
+          valueFrom = var.smtp_password_secret_arn
         }
       ]
       logConfiguration = {
@@ -269,28 +300,12 @@ resource "aws_ecs_task_definition" "worker" {
           value = var.db_name
         },
         {
-          name  = "DB_USER"
-          value = var.db_user
-        },
-        {
-          name  = "DB_PASSWORD"
-          value = var.db_password
-        },
-        {
           name  = "SMTP_HOST"
           value = var.smtp_host
         },
         {
           name  = "SMTP_PORT"
           value = tostring(var.smtp_port)
-        },
-        {
-          name  = "SMTP_USER"
-          value = var.smtp_user
-        },
-        {
-          name  = "SMTP_PASSWORD"
-          value = var.smtp_password
         },
         {
           name  = "SMTP_SECURE"
@@ -311,6 +326,24 @@ resource "aws_ecs_task_definition" "worker" {
         {
           name  = "SQS_VISIBILITY_TIMEOUT_SECONDS"
           value = "300"
+        }
+      ]
+      secrets = [
+        {
+          name      = "DB_USER"
+          valueFrom = var.db_user_secret_arn
+        },
+        {
+          name      = "DB_PASSWORD"
+          valueFrom = var.db_password_secret_arn
+        },
+        {
+          name      = "SMTP_USER"
+          valueFrom = var.smtp_user_secret_arn
+        },
+        {
+          name      = "SMTP_PASSWORD"
+          valueFrom = var.smtp_password_secret_arn
         }
       ]
       logConfiguration = {
