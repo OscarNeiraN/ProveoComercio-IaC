@@ -1,6 +1,11 @@
 data "aws_caller_identity" "current" {}
 data "aws_partition" "current" {}
 
+locals {
+  trail_name = "${var.project_name}-trail"
+  trail_arn  = "arn:${data.aws_partition.current.partition}:cloudtrail:${var.aws_region}:${data.aws_caller_identity.current.account_id}:trail/${local.trail_name}"
+}
+
 resource "random_id" "trail_bucket_suffix" {
   count       = var.enable_cloudtrail ? 1 : 0
   byte_length = 4
@@ -84,7 +89,7 @@ data "aws_iam_policy_document" "trail_bucket" {
     condition {
       test     = "StringEquals"
       variable = "aws:SourceArn"
-      values   = ["arn:${data.aws_partition.current.partition}:cloudtrail:*:${data.aws_caller_identity.current.account_id}:trail/${var.project_name}-trail"]
+      values   = [local.trail_arn]
     }
   }
 
@@ -109,7 +114,7 @@ data "aws_iam_policy_document" "trail_bucket" {
     condition {
       test     = "StringEquals"
       variable = "aws:SourceArn"
-      values   = ["arn:${data.aws_partition.current.partition}:cloudtrail:*:${data.aws_caller_identity.current.account_id}:trail/${var.project_name}-trail"]
+      values   = [local.trail_arn]
     }
   }
 }
@@ -123,7 +128,7 @@ resource "aws_s3_bucket_policy" "trail" {
 resource "aws_cloudtrail" "main" {
   count = var.enable_cloudtrail ? 1 : 0
 
-  name                          = "${var.project_name}-trail"
+  name                          = local.trail_name
   s3_bucket_name                = aws_s3_bucket.trail[0].id
   is_multi_region_trail         = true
   include_global_service_events = true

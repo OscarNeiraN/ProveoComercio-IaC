@@ -2,6 +2,11 @@ variable "project_name" {
   type = string
 }
 
+variable "aws_region" {
+  type        = string
+  description = "Region donde se crea el trail y se usa en aws:SourceArn de la bucket policy."
+}
+
 variable "enable_cloudtrail" {
   type        = bool
   default     = true

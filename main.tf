@@ -16,6 +16,7 @@ module "alerts" {
 module "cloudtrail" {
   source             = "./modules/cloudtrail"
   project_name       = var.project_name
+  aws_region         = var.aws_region
   enable_cloudtrail  = var.enable_cloudtrail
   log_retention_days = var.cloudtrail_log_retention_days
 }
