@@ -167,6 +167,42 @@ variable "create_db" {
   default = true
 }
 
+variable "enable_backup" {
+  type        = bool
+  default     = true
+  description = "Crea un plan diario de AWS Backup para la instancia RDS creada por Terraform."
+}
+
+variable "backup_config" {
+  type = object({
+    schedule                  = optional(string)
+    start_window_minutes      = optional(number)
+    completion_window_minutes = optional(number)
+    retention_days            = optional(number)
+    vault_kms_key_arn         = optional(string)
+    create_iam_role           = optional(bool)
+    backup_role_name          = optional(string)
+    backup_role_arn           = optional(string)
+  })
+  default     = {}
+  description = "Configuracion de AWS Backup. El schedule usa cron de AWS Backup en UTC."
+
+  validation {
+    condition     = var.backup_config.retention_days == null || var.backup_config.retention_days >= 1
+    error_message = "backup_config.retention_days debe ser mayor o igual a 1."
+  }
+
+  validation {
+    condition     = var.backup_config.start_window_minutes == null || var.backup_config.start_window_minutes >= 60
+    error_message = "backup_config.start_window_minutes debe ser mayor o igual a 60 minutos."
+  }
+
+  validation {
+    condition     = var.backup_config.completion_window_minutes == null || var.backup_config.completion_window_minutes >= 60
+    error_message = "backup_config.completion_window_minutes debe ser mayor o igual a 60 minutos."
+  }
+}
+
 variable "external_db_host" {
   type    = string
   default = ""

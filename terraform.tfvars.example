@@ -53,6 +53,25 @@ db_config = {
   deletion_protection     = false
 }
 
+enable_backup = true
+
+backup_config = {
+  # Diario a las 05:00 UTC. En Chile queda de madrugada y evita horas de mayor uso.
+  schedule                  = "cron(0 5 * * ? *)"
+  start_window_minutes      = 60
+  completion_window_minutes = 180
+  retention_days            = 35
+
+  # Vacio = vault cifrado con clave administrada por AWS Backup.
+  # Si tienes una CMK propia, pega aqui su ARN.
+  vault_kms_key_arn = ""
+
+  # Cuenta normal: true crea un rol IAM dedicado para AWS Backup.
+  # AWS Academy / Learner Lab: usa false y un rol existente como LabRole.
+  create_iam_role  = true
+  backup_role_name = ""
+}
+
 smtp_config = {
   host      = ""
   port      = 587

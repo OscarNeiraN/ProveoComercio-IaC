@@ -74,6 +74,26 @@ output "db_port" {
   value = module.database.db_port
 }
 
+output "db_instance_arn" {
+  value       = module.database.db_instance_arn
+  description = "ARN de la instancia RDS MySQL respaldada por AWS Backup"
+}
+
+output "backup_vault_name" {
+  value       = module.backup.backup_vault_name
+  description = "Vault cifrado de AWS Backup para RDS"
+}
+
+output "backup_plan_id" {
+  value       = module.backup.backup_plan_id
+  description = "Plan diario de AWS Backup para RDS"
+}
+
+output "backup_role_arn" {
+  value       = module.backup.backup_role_arn
+  description = "Rol usado por AWS Backup para ejecutar respaldos"
+}
+
 output "sqs_queue_url" {
   value = module.sqs.queue_url
 }

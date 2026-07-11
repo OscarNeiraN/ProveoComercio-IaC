@@ -107,6 +107,16 @@ jobs:
                 backup_retention_period: 7,
                 deletion_protection: false
               },
+              enable_backup: true,
+              backup_config: {
+                schedule: "cron(0 5 * * ? *)",
+                start_window_minutes: 60,
+                completion_window_minutes: 180,
+                retention_days: 35,
+                vault_kms_key_arn: "",
+                create_iam_role: false,
+                backup_role_name: "LabRole"
+              },
               smtp_config: {
                 host: "smtp-relay.brevo.com",
                 port: 587,

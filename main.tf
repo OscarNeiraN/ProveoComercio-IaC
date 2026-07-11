@@ -45,6 +45,28 @@ module "database" {
   security_group_id = module.security.db_sg_id
 }
 
+locals {
+  backup_create_iam_role = coalesce(var.backup_config.create_iam_role, var.create_iam_roles)
+  backup_role_name       = coalesce(var.backup_config.backup_role_name, var.task_role_name != "" ? var.task_role_name : var.task_execution_role_name)
+}
+
+module "backup" {
+  source                    = "./modules/backup"
+  enable_backup             = var.enable_backup && var.create_db
+  project_name              = var.project_name
+  resource_arns             = var.create_db ? [module.database.db_instance_arn] : []
+  schedule                  = coalesce(var.backup_config.schedule, "cron(0 5 * * ? *)")
+  start_window_minutes      = coalesce(var.backup_config.start_window_minutes, 60)
+  completion_window_minutes = coalesce(var.backup_config.completion_window_minutes, 180)
+  retention_days            = coalesce(var.backup_config.retention_days, 35)
+  vault_kms_key_arn         = coalesce(var.backup_config.vault_kms_key_arn, "")
+  create_iam_role           = local.backup_create_iam_role
+  backup_role_name          = local.backup_role_name
+  backup_role_arn           = coalesce(var.backup_config.backup_role_arn, "")
+
+  depends_on = [module.database]
+}
+
 module "ecr" {
   source       = "./modules/ecr"
   project_name = var.project_name

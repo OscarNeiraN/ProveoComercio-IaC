@@ -6,6 +6,11 @@ output "db_connection_endpoint" {
   value = one(aws_db_instance.mysql[*].endpoint)
 }
 
+output "db_instance_arn" {
+  value       = one(aws_db_instance.mysql[*].arn)
+  description = "ARN de la instancia RDS MySQL, usado por AWS Backup"
+}
+
 output "db_port" {
   value = one(aws_db_instance.mysql[*].port)
 }
