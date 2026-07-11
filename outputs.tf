@@ -158,6 +158,26 @@ output "backend_internal_dns_name" {
   description = "Upstream privado usado por el frontend para llegar al backend"
 }
 
+output "alerts_topic_arn" {
+  value       = module.alerts.topic_arn
+  description = "Topico SNS al que llegan todas las alarmas de CloudWatch"
+}
+
+output "dashboard_name" {
+  value       = module.observability.dashboard_name
+  description = "Nombre del dashboard de CloudWatch con la vista general de la infraestructura"
+}
+
+output "cloudtrail_bucket_name" {
+  value       = module.cloudtrail.bucket_name
+  description = "Bucket S3 donde CloudTrail guarda el registro de auditoria"
+}
+
+output "cloudtrail_arn" {
+  value       = module.cloudtrail.trail_arn
+  description = "ARN del trail de CloudTrail"
+}
+
 output "app_runtime_secret_arns" {
   description = "Secretos creados en AWS Secrets Manager y consumidos por ECS"
   value = {

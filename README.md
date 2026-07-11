@@ -32,6 +32,9 @@ El frontend nunca habla directo con el backend por internet: el ALB publico solo
 - `modules/ecr`: repositorios de imagenes (frontend, backend, migrador de base de datos).
 - `modules/sqs`: cola principal y dead letter queue (DLQ).
 - `modules/ecs`: cluster ECS, task definitions, servicios, autoscaling, alarmas de CloudWatch.
+- `modules/alerts`: topico SNS y suscripcion por correo, compartido por todas las alarmas.
+- `modules/observability`: alarmas de CPU/memoria/RDS/latencia/dead letter queue y un dashboard de CloudWatch.
+- `modules/cloudtrail`: auditoria de la cuenta AWS (quien crea, modifica o borra recursos).
 - `modules/migration`: task ECS temporal para importar un dump MySQL.
 - `bootstrap/`: proyecto Terraform separado que crea el bucket S3 del remote state. Se aplica una sola vez, a mano.
 
@@ -69,6 +72,15 @@ El modulo mas grande. Crea:
 - Autoscaling: frontend y backend escalan por CPU; el worker escala por profundidad de la cola SQS (mensajes visibles por tarea).
 - Los roles IAM de ejecucion y de tarea, o la reutilizacion de un rol existente (ver seccion AWS Academy Learner Lab).
 
+**alerts**
+Un topico SNS (`${project_name}-alerts`) con una suscripcion por correo (`alert_email`), cifrado con la clave gestionada por AWS (`alias/aws/sns`). Es el unico punto de notificacion: tanto las alarmas de despliegue del modulo `ecs` como las alarmas operativas del modulo `observability` mandan sus avisos ahi. Se separa en su propio modulo, sin dependencias de otros, para evitar un ciclo (`ecs` y `observability` necesitan el topico, pero `observability` tambien necesita salidas de `ecs`).
+
+**observability**
+Alarmas de CloudWatch que no estan atadas a un despliegue especifico, sino al estado operativo normal de la infraestructura: CPU y memoria altas (>80% sostenido 15 minutos) en cada uno de los tres servicios ECS, CPU alta y poco espacio libre en RDS, latencia alta del backend, y mensajes visibles en la dead letter queue de SQS (pedidos que fallaron demasiadas veces y quedaron sin procesar). Tambien crea un dashboard de CloudWatch (`${project_name}-overview`) con esas mismas metricas en un solo lugar.
+
+**cloudtrail**
+Un trail de CloudTrail multi-region que audita quien hizo que en la cuenta AWS: cada llamada de creacion, modificacion o borrado de un recurso (management events), con la identidad de quien la hizo, cuando, y desde donde. Los logs se guardan en un bucket S3 dedicado (no el mismo que el remote state), privado, cifrado, con versioning y una regla de ciclo de vida que borra logs mas viejos que `cloudtrail_log_retention_days` (180 dias por defecto). Solo registra management events: no se activan data events (por ejemplo, acceso a nivel de objeto en S3) porque esos si tienen costo por evento y no aportan al objetivo de "quien modifico la infraestructura".
+
 **migration**
 Un cluster y una task definition Fargate separados, pensados para correrse una sola vez a mano cuando hay que importar un dump MySQL existente dentro de la red privada (no expuesto a internet).
 
@@ -92,7 +104,10 @@ Ademas de la retencion nativa de RDS (`backup_retention_period`), Terraform crea
 Los tres servicios ECS tienen `deployment_circuit_breaker` con `rollback = true`: si las tareas nuevas no llegan a pasar el health check despues de varios intentos, ECS revierte solo a la ultima revision estable, sin intervencion humana.
 
 **Alarmas de CloudWatch como segunda linea de defensa**
-Ademas del circuit breaker (que solo mira el health check del contenedor), frontend y backend tienen una alarma de CloudWatch sobre la tasa de errores 5xx real del ALB. Si un despliegue deja el contenedor "sano" segun su health check pero la aplicacion responde con errores bajo trafico real, esa alarma tambien dispara el rollback automatico del servicio.
+Ademas del circuit breaker (que solo mira el health check del contenedor), frontend y backend tienen una alarma de CloudWatch sobre la tasa de errores 5xx real del ALB. Si un despliegue deja el contenedor "sano" segun su health check pero la aplicacion responde con errores bajo trafico real, esa alarma tambien dispara el rollback automatico del servicio. Estas dos alarmas (`frontend-5xx`, `backend-5xx`) tambien notifican al topico SNS del modulo `alerts`, ademas de disparar el rollback.
+
+**Monitoreo operativo continuo, mas alla del despliegue**
+El modulo `observability` agrega alarmas que no gatillan ningun rollback, pero avisan por correo cuando algo empieza a degradarse antes de que se vuelva una caida: CPU y memoria de cada servicio ECS, CPU y espacio libre de RDS, latencia del backend, y mensajes en la dead letter queue de SQS. Todas mandan su notificacion (al dispararse y al recuperarse) al mismo topico SNS que las alarmas de despliegue, y quedan resumidas en un dashboard de CloudWatch.
 
 **Rollback manual**
 Cuando el problema no es detectable automaticamente (por ejemplo, un bug visual que no genera errores HTTP), se puede revertir un servicio especifico a una revision anterior de su task definition sin reconstruir nada, porque ECS conserva todas las revisiones anteriores y cada una apunta a una imagen fija por commit. El workflow `App/.github/workflows/rollback.yml` hace esto de forma guiada (ver ese repositorio); el equivalente manual es:
@@ -108,6 +123,7 @@ aws ecs update-service --cluster proveocomercio-cluster --service <nombre-del-se
 - Las credenciales de runtime (usuario y password de DB, JWT secret, usuario y password SMTP) se guardan en AWS Secrets Manager, no en variables de entorno planas ni en el codigo. ECS las inyecta en tiempo de ejecucion via el bloque `secrets` de la task definition.
 - Si `jwt_secret` se deja vacio en las variables, Terraform genera un valor aleatorio y lo guarda directamente en Secrets Manager.
 - El backend recibe `FRONTEND_URL` para restringir CORS a ese origen en produccion, en vez de aceptar cualquiera.
+- CloudTrail audita quien crea, modifica o borra recursos en la cuenta AWS (ver modulo `cloudtrail` mas arriba). Sirve tanto para investigar un incidente como para detectar un cambio manual hecho fuera de Terraform, que rompe el principio de "todo pasa por codigo".
 
 **Limitacion conocida: no hay HTTPS.** Los dos ALB solo escuchan en el puerto 80. No hay certificado ACM ni dominio propio configurado porque el entorno objetivo (AWS Academy Learner Lab) normalmente no tiene un dominio verificable disponible. Esto significa que las credenciales viajan sin cifrar entre el navegador y el ALB. Si este proyecto se usa mas alla de un entorno de practica, agregar un listener HTTPS con un certificado ACM (o un proxy como Cloudflare delante) antes de manejar datos reales de usuarios.
 
@@ -156,6 +172,8 @@ Si se cambia el nombre del bucket, hay que cambiarlo en dos lugares a la vez: `b
 - `smtp_config`: host, puerto, usuario, password y remitente para el correo de confirmacion.
 - `frontend_desired_count`, `backend_desired_count`, `worker_desired_count`, `worker_min_capacity`, `worker_max_capacity`: cantidad de tareas por servicio (ver Alta disponibilidad).
 - `jwt_secret`: opcional. Si se deja vacio, Terraform genera uno.
+- `alert_email`: correo que recibe las notificaciones de todas las alarmas via SNS. Obligatoria, sin valor por defecto. SNS manda un correo de confirmacion la primera vez: si no se acepta la suscripcion, las alarmas se disparan igual pero no llega ningun aviso.
+- `enable_cloudtrail`, `cloudtrail_log_retention_days`: activa la auditoria de la cuenta AWS y cuantos dias se conservan los logs (180 por defecto).
 
 ### AWS Academy Learner Lab
 
@@ -217,6 +235,7 @@ Importante: ese `terraform.auto.tfvars.json` es una reconstruccion de `terraform
 - `AWS_SESSION_TOKEN`: obligatorio en AWS Academy Learner Lab (la sesion vence cada pocas horas: si el pipeline falla en "Configure AWS credentials" o en `terraform plan`/`apply` con un error de autenticacion, hay que refrescar este secreto con las credenciales vigentes del lab). Puede quedar vacio en una cuenta AWS normal con credenciales permanentes.
 - `DB_USERNAME`, `DB_PASSWORD`: credenciales del usuario administrador de RDS.
 - `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM`: credenciales del proveedor SMTP usado para el correo de confirmacion de compra.
+- `ALERT_EMAIL`: correo que recibe las notificaciones de las alarmas de CloudWatch.
 
 Estos secretos son propios de este repositorio (Terraform). El repositorio `App` tiene su propio conjunto de secretos (algunos coinciden, como las credenciales AWS): al ser dos repositorios de GitHub independientes, no comparten secretos entre si salvo que se configuren como Organization secrets.
 
@@ -257,6 +276,10 @@ terraform output backend_service_name
 terraform output worker_service_name
 terraform output nat_public_ip
 terraform output github_actions_secret_values
+terraform output alerts_topic_arn
+terraform output dashboard_name
+terraform output cloudtrail_bucket_name
+terraform output cloudtrail_arn
 ```
 
 ## Troubleshooting
@@ -272,3 +295,6 @@ Es esperado si todavia no corrio el pipeline de `App` al menos una vez: los ECR 
 
 **`terraform plan` quiere recrear o modificar recursos que ya existen y no deberian tocarse.**
 Verificar que se este usando el mismo bucket de state (y la misma key) que se uso para crear esos recursos la primera vez. Si el proyecto se aplico alguna vez con backend local y despues se migro a S3, el state local y el remoto pueden haber quedado desincronizados.
+
+**Las alarmas se disparan pero no llega ningun correo.**
+Falta confirmar la suscripcion de SNS. Despues del primer `terraform apply`, revisar la bandeja de entrada (y spam) de `alert_email`: Amazon SNS manda un correo de confirmacion que hay que aceptar una sola vez; sin eso, la suscripcion queda "pendiente de confirmacion" y SNS descarta las notificaciones en silencio.

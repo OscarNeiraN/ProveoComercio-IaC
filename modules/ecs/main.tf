@@ -85,11 +85,33 @@ data "aws_iam_policy_document" "ecs_execution_secrets" {
   }
 }
 
+data "aws_iam_policy_document" "ecs_exec" {
+  statement {
+    effect = "Allow"
+
+    actions = [
+      "ssmmessages:CreateControlChannel",
+      "ssmmessages:CreateDataChannel",
+      "ssmmessages:OpenControlChannel",
+      "ssmmessages:OpenDataChannel"
+    ]
+
+    resources = ["*"]
+  }
+}
+
 resource "aws_iam_role_policy" "ecs_execution_secrets" {
   count  = var.create_iam_roles ? 1 : 0
   name   = "${var.project_name}-ecs-execution-secrets"
   role   = aws_iam_role.ecs_task_execution[0].id
   policy = data.aws_iam_policy_document.ecs_execution_secrets.json
+}
+
+resource "aws_iam_role_policy" "ecs_exec" {
+  count  = var.create_iam_roles ? 1 : 0
+  name   = "${var.project_name}-ecs-exec"
+  role   = aws_iam_role.ecs_task[0].id
+  policy = data.aws_iam_policy_document.ecs_exec.json
 }
 
 resource "aws_cloudwatch_log_group" "ecs" {
@@ -383,6 +405,9 @@ resource "aws_cloudwatch_metric_alarm" "frontend_5xx" {
     LoadBalancer = var.frontend_alb_arn_suffix
     TargetGroup  = var.frontend_target_group_arn_suffix
   }
+
+  alarm_actions = [var.sns_topic_arn]
+  ok_actions    = [var.sns_topic_arn]
 }
 
 resource "aws_ecs_service" "frontend" {
@@ -393,6 +418,7 @@ resource "aws_ecs_service" "frontend" {
   platform_version                  = "LATEST"
   desired_count                     = var.frontend_desired_count
   health_check_grace_period_seconds = 60
+  enable_execute_command            = true
 
   deployment_circuit_breaker {
     enable   = true
@@ -418,6 +444,10 @@ resource "aws_ecs_service" "frontend" {
     target_group_arn = var.frontend_target_group_arn
     container_name   = "frontend"
     container_port   = var.frontend_port
+  }
+
+  lifecycle {
+    ignore_changes = [task_definition]
   }
 
   depends_on = [aws_ecs_service.backend]
@@ -466,6 +496,9 @@ resource "aws_cloudwatch_metric_alarm" "backend_5xx" {
     LoadBalancer = var.backend_alb_arn_suffix
     TargetGroup  = var.backend_target_group_arn_suffix
   }
+
+  alarm_actions = [var.sns_topic_arn]
+  ok_actions    = [var.sns_topic_arn]
 }
 
 resource "aws_ecs_service" "backend" {
@@ -476,6 +509,7 @@ resource "aws_ecs_service" "backend" {
   platform_version                  = "LATEST"
   desired_count                     = var.backend_desired_count
   health_check_grace_period_seconds = 60
+  enable_execute_command            = true
 
   deployment_circuit_breaker {
     enable   = true
@@ -499,15 +533,20 @@ resource "aws_ecs_service" "backend" {
     container_name   = "backend"
     container_port   = var.backend_port
   }
+
+  lifecycle {
+    ignore_changes = [task_definition]
+  }
 }
 
 resource "aws_ecs_service" "worker" {
-  name             = "${var.project_name}-worker-service"
-  cluster          = aws_ecs_cluster.main.id
-  task_definition  = aws_ecs_task_definition.worker.arn
-  launch_type      = "FARGATE"
-  platform_version = "LATEST"
-  desired_count    = var.worker_desired_count
+  name                   = "${var.project_name}-worker-service"
+  cluster                = aws_ecs_cluster.main.id
+  task_definition        = aws_ecs_task_definition.worker.arn
+  launch_type            = "FARGATE"
+  platform_version       = "LATEST"
+  desired_count          = var.worker_desired_count
+  enable_execute_command = true
 
   deployment_circuit_breaker {
     enable   = true
@@ -518,6 +557,10 @@ resource "aws_ecs_service" "worker" {
     subnets          = var.subnet_ids
     security_groups  = var.worker_security_group_ids
     assign_public_ip = false
+  }
+
+  lifecycle {
+    ignore_changes = [task_definition]
   }
 }
 

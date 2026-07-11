@@ -7,6 +7,19 @@ module "network" {
   nat_gateway_per_az = var.nat_gateway_per_az
 }
 
+module "alerts" {
+  source       = "./modules/alerts"
+  project_name = var.project_name
+  alert_email  = var.alert_email
+}
+
+module "cloudtrail" {
+  source             = "./modules/cloudtrail"
+  project_name       = var.project_name
+  enable_cloudtrail  = var.enable_cloudtrail
+  log_retention_days = var.cloudtrail_log_retention_days
+}
+
 module "security" {
   source        = "./modules/security"
   project_name  = var.project_name
@@ -159,6 +172,22 @@ module "ecs" {
   worker_min_capacity              = var.worker_min_capacity
   worker_max_capacity              = var.worker_max_capacity
   worker_queue_messages_per_task   = var.worker_queue_messages_per_task
+  sns_topic_arn                    = module.alerts.topic_arn
 
   depends_on = [module.alb]
+}
+
+module "observability" {
+  source                          = "./modules/observability"
+  project_name                    = var.project_name
+  aws_region                      = var.aws_region
+  sns_topic_arn                   = module.alerts.topic_arn
+  ecs_cluster_name                = module.ecs.cluster_name
+  frontend_service_name           = module.ecs.frontend_service_name
+  backend_service_name            = module.ecs.backend_service_name
+  worker_service_name             = module.ecs.worker_service_name
+  db_instance_id                  = module.database.db_instance_id
+  backend_alb_arn_suffix          = module.alb.backend_alb_arn_suffix
+  backend_target_group_arn_suffix = module.alb.backend_target_group_arn_suffix
+  sqs_dlq_name                    = module.sqs.dlq_name
 }

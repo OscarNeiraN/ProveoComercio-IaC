@@ -262,3 +262,20 @@ variable "alb_config" {
     target_protocol      = string
   })
 }
+
+variable "alert_email" {
+  type        = string
+  description = "Correo que recibe las notificaciones de las alarmas de CloudWatch via SNS."
+}
+
+variable "enable_cloudtrail" {
+  type        = bool
+  default     = true
+  description = "Crea un trail de CloudTrail para auditar quien crea, modifica o borra recursos en la cuenta AWS."
+}
+
+variable "cloudtrail_log_retention_days" {
+  type        = number
+  default     = 180
+  description = "Dias que se conservan los logs de CloudTrail en S3 antes de borrarse automaticamente."
+}

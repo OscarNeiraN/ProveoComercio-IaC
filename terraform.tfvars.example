@@ -81,6 +81,15 @@ smtp_config = {
   mail_from = ""
 }
 
+# Correo que recibe las alarmas de CloudWatch via SNS. SNS manda un correo de
+# confirmacion la primera vez: hay que aceptar la suscripcion o no llegan las alertas.
+alert_email = "CHANGE_ME@example.com"
+
+# Auditoria de quien crea/modifica/borra recursos en la cuenta AWS. Gratis para
+# management events (primera copia por region); solo paga el storage minimo en S3.
+# enable_cloudtrail             = true
+# cloudtrail_log_retention_days = 180
+
 # AWS Academy / Learner Lab:
 # create_iam_roles         = false
 # task_execution_role_name = "LabRole"

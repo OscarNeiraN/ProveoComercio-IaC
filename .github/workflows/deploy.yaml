@@ -26,6 +26,8 @@ on:
         required: true
       MAIL_FROM:
         required: true
+      ALERT_EMAIL:
+        required: true
 
 permissions:
   contents: read
@@ -61,6 +63,7 @@ jobs:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           MAIL_FROM: ${{ secrets.MAIL_FROM }}
+          ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
         run: |
           set -euo pipefail
           # jq --arg escapa correctamente cada valor: evita que un caracter especial
@@ -73,6 +76,7 @@ jobs:
             --arg smtp_user "$SMTP_USER" \
             --arg smtp_password "$SMTP_PASSWORD" \
             --arg mail_from "$MAIL_FROM" \
+            --arg alert_email "$ALERT_EMAIL" \
             '{
               project_name: "proveocomercio",
               aws_region: $aws_region,
@@ -133,7 +137,10 @@ jobs:
               create_iam_roles: false,
               task_execution_role_name: "LabRole",
               task_role_name: "LabRole",
-              enable_ecs_autoscaling: false
+              enable_ecs_autoscaling: false,
+              alert_email: $alert_email,
+              enable_cloudtrail: true,
+              cloudtrail_log_retention_days: 180
             }' > terraform.auto.tfvars.json
 
       - name: Terraform Init

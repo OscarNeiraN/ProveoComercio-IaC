@@ -19,6 +19,11 @@ variable "frontend_url" {
   description = "Public URL of the frontend, used by the backend to restrict CORS"
 }
 
+variable "sns_topic_arn" {
+  type        = string
+  description = "ARN del topico SNS (modulo alerts) al que se envian las alarmas de 5xx"
+}
+
 variable "backend_resolver" {
   type = string
 }

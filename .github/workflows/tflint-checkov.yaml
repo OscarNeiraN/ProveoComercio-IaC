@@ -44,6 +44,18 @@ jobs:
         run: pip install checkov
 
       - name: Ejecutar Checkov
+        # Nuevos desde el modulo cloudtrail/observability/alerts:
+        #  - CKV_AWS_252: notificacion SNS de CloudTrail cada vez que entrega un log
+        #    saturaria el mismo correo de alertas de negocio; no aporta al objetivo
+        #    de auditoria de "quien hizo que".
+        #  - CKV_AWS_35: CloudTrail con KMS CMK propia - mismo criterio que el resto
+        #    de recursos (KMS gestionada por AWS ya cifra, CMK propia es costo extra).
+        #  - CKV2_AWS_10: CloudTrail integrado con CloudWatch Logs necesitaria un rol
+        #    IAM adicional; se deja en modo S3-only para no depender de create_iam_roles.
+        #  - CKV2_AWS_61, CKV2_AWS_6, CKV_AWS_21: el bucket de CloudTrail SI tiene
+        #    lifecycle, bloqueo de acceso publico y versioning (modules/cloudtrail/
+        #    main.tf); Checkov no lo detecta por como referencia el bucket via
+        #    count/indice ([0]), mismo caso ya visto con el default security group.
         run: |
           checkov -d ${{ inputs.path }} --framework terraform --compact \
-            --skip-check CKV2_AWS_11,CKV2_AWS_12,CKV2_AWS_19,CKV2_AWS_28,CKV2_AWS_5,CKV2_AWS_57,CKV_AWS_103,CKV_AWS_118,CKV_AWS_129,CKV_AWS_136,CKV_AWS_149,CKV_AWS_150,CKV_AWS_158,CKV_AWS_166,CKV_AWS_2,CKV_AWS_260,CKV_AWS_293,CKV_AWS_338,CKV_AWS_353,CKV_AWS_378,CKV_AWS_51,CKV_AWS_91,CKV_AWS_18,CKV2_AWS_62,CKV_AWS_144,CKV_AWS_145
+            --skip-check CKV2_AWS_11,CKV2_AWS_12,CKV2_AWS_19,CKV2_AWS_28,CKV2_AWS_5,CKV2_AWS_57,CKV_AWS_103,CKV_AWS_118,CKV_AWS_129,CKV_AWS_136,CKV_AWS_149,CKV_AWS_150,CKV_AWS_158,CKV_AWS_166,CKV_AWS_2,CKV_AWS_260,CKV_AWS_293,CKV_AWS_338,CKV_AWS_353,CKV_AWS_378,CKV_AWS_51,CKV_AWS_91,CKV_AWS_18,CKV2_AWS_62,CKV_AWS_144,CKV_AWS_145,CKV_AWS_252,CKV_AWS_35,CKV2_AWS_10,CKV2_AWS_61,CKV2_AWS_6,CKV_AWS_21
