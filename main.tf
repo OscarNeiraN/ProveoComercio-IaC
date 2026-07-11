@@ -46,8 +46,16 @@ module "database" {
 }
 
 locals {
-  backup_create_iam_role = coalesce(var.backup_config.create_iam_role, var.create_iam_roles)
-  backup_role_name       = coalesce(var.backup_config.backup_role_name, var.task_role_name != "" ? var.task_role_name : var.task_execution_role_name)
+  backup_create_iam_role           = var.backup_config.create_iam_role != null ? var.backup_config.create_iam_role : var.create_iam_roles
+  backup_default_role_name         = var.task_role_name != "" ? var.task_role_name : var.task_execution_role_name
+  backup_config_role_name          = var.backup_config.backup_role_name != null ? var.backup_config.backup_role_name : ""
+  backup_role_name                 = local.backup_config_role_name != "" ? local.backup_config_role_name : local.backup_default_role_name
+  backup_schedule                  = var.backup_config.schedule != null && var.backup_config.schedule != "" ? var.backup_config.schedule : "cron(0 5 * * ? *)"
+  backup_start_window_minutes      = var.backup_config.start_window_minutes != null ? var.backup_config.start_window_minutes : 60
+  backup_completion_window_minutes = var.backup_config.completion_window_minutes != null ? var.backup_config.completion_window_minutes : 180
+  backup_retention_days            = var.backup_config.retention_days != null ? var.backup_config.retention_days : 35
+  backup_vault_kms_key_arn         = var.backup_config.vault_kms_key_arn != null ? var.backup_config.vault_kms_key_arn : ""
+  backup_role_arn                  = var.backup_config.backup_role_arn != null ? var.backup_config.backup_role_arn : ""
 }
 
 module "backup" {
@@ -55,14 +63,14 @@ module "backup" {
   enable_backup             = var.enable_backup && var.create_db
   project_name              = var.project_name
   resource_arns             = var.create_db ? [module.database.db_instance_arn] : []
-  schedule                  = coalesce(var.backup_config.schedule, "cron(0 5 * * ? *)")
-  start_window_minutes      = coalesce(var.backup_config.start_window_minutes, 60)
-  completion_window_minutes = coalesce(var.backup_config.completion_window_minutes, 180)
-  retention_days            = coalesce(var.backup_config.retention_days, 35)
-  vault_kms_key_arn         = coalesce(var.backup_config.vault_kms_key_arn, "")
+  schedule                  = local.backup_schedule
+  start_window_minutes      = local.backup_start_window_minutes
+  completion_window_minutes = local.backup_completion_window_minutes
+  retention_days            = local.backup_retention_days
+  vault_kms_key_arn         = local.backup_vault_kms_key_arn
   create_iam_role           = local.backup_create_iam_role
   backup_role_name          = local.backup_role_name
-  backup_role_arn           = coalesce(var.backup_config.backup_role_arn, "")
+  backup_role_arn           = local.backup_role_arn
 
   depends_on = [module.database]
 }
