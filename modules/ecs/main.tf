@@ -128,7 +128,7 @@ resource "aws_ecs_task_definition" "frontend" {
         }
       ]
       healthCheck = {
-        command     = ["CMD-SHELL", "wget -qO- http://localhost/ || exit 1"]
+        command     = ["CMD-SHELL", "wget -qO- http://127.0.0.1/ || exit 1"]
         interval    = 30
         timeout     = 5
         retries     = 3
@@ -186,7 +186,7 @@ resource "aws_ecs_task_definition" "backend" {
         }
       ]
       healthCheck = {
-        command     = ["CMD-SHELL", "wget -qO- http://localhost:${var.backend_port}/api/health || exit 1"]
+        command     = ["CMD-SHELL", "wget -qO- http://127.0.0.1:${var.backend_port}/api/health || exit 1"]
         interval    = 30
         timeout     = 5
         retries     = 3
